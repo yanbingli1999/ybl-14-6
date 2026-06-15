@@ -43,10 +43,10 @@ function generateCluesForCandy(candyType: CandyType): Clue[] {
   });
 }
 
-function generateRiddleItems(selectedTypes: CandyType[], baseQuantity: number): RiddleOrderItem[] {
-  return selectedTypes.map(type => ({
+function generateRiddleItems(selectedTypes: CandyType[], quantities: number[]): RiddleOrderItem[] {
+  return selectedTypes.map((type, index) => ({
     candyType: type,
-    quantity: baseQuantity + Math.floor(Math.random() * 5),
+    quantity: quantities[index],
     clues: generateCluesForCandy(type),
     guessedType: null,
     guessAttempts: 0,
@@ -66,15 +66,17 @@ export function generateOrder(stationId: string, reputation: number): StationOrd
   const availableTypes = shuffle([...BASIC_CANDY_TYPES]);
   const selectedTypes = availableTypes.slice(0, itemCount);
 
+  const quantities = selectedTypes.map(() => baseQuantity + Math.floor(Math.random() * 5));
+
   const isRiddle = Math.random() < GAME_CONFIG.RIDDLE_CHANCE;
   const baseRewardMultiplier = isRiddle ? GAME_CONFIG.RIDDLE_BASE_MULTIPLIER : 1;
 
-  const items: OrderItem[] = selectedTypes.map(type => ({
+  const items: OrderItem[] = selectedTypes.map((type, index) => ({
     candyType: type,
-    quantity: baseQuantity + Math.floor(Math.random() * 5),
+    quantity: quantities[index],
   }));
 
-  const riddleItems = isRiddle ? generateRiddleItems(selectedTypes, baseQuantity) : [];
+  const riddleItems = isRiddle ? generateRiddleItems(selectedTypes, quantities) : [];
 
   const baseReward = Math.floor(items.reduce((sum, item) => sum + item.quantity * 5, 0) * baseRewardMultiplier);
   const isUrgent = Math.random() < getUrgentChance(difficultyLevel);
@@ -244,11 +246,24 @@ export function makeGuess(
   };
 }
 
-export function getEffectiveOrderItems(order: StationOrder): OrderItem[] {
+export function getRealOrderItems(order: StationOrder): OrderItem[] {
+  if (!order.isRiddle) return order.items;
+
+  return order.riddleItems.map(item => ({
+    candyType: item.candyType,
+    quantity: item.quantity,
+  }));
+}
+
+export function getDisplayOrderItems(order: StationOrder): OrderItem[] {
   if (!order.isRiddle) return order.items;
 
   return order.riddleItems.map(item => ({
     candyType: item.guessedType || item.candyType,
     quantity: item.quantity,
   }));
+}
+
+export function getEffectiveOrderItems(order: StationOrder): OrderItem[] {
+  return getRealOrderItems(order);
 }

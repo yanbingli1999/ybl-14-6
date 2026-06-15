@@ -115,6 +115,17 @@ export default function DispatchResultModal() {
                   <span className="text-green-600">+{perfectGuessBonus} 金币</span>
                 </div>
               )}
+              {riddleResults.some(r => r.guessPenalty > 0) && (
+                <div className="mt-1 flex justify-between text-xs">
+                  <span className="text-red-500 flex items-center gap-1">
+                    <XCircle className="w-3 h-3" />
+                    猜错扣罚
+                  </span>
+                  <span className="text-red-500">
+                    -{riddleResults.reduce((sum, r) => sum + r.guessPenalty * 100, 0)} 金币
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

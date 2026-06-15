@@ -1,21 +1,23 @@
 import { Train, StationOrder, DispatchResult, OrderItem, CandyType, RiddleResult } from '@/types';
 import { GAME_CONFIG, CANDY_CONFIG } from '@/data/config';
 import { getCandyLoad } from './loadingSystem';
-import { getEffectiveOrderItems } from './contractSystem';
+import { getRealOrderItems, getDisplayOrderItems } from './contractSystem';
 
 function calculateRiddleResults(order: StationOrder): {
   riddleResults: RiddleResult[];
   clueCosts: number;
   perfectGuessBonus: number;
   totalRewardMultiplier: number;
+  wrongGuessPenalty: number;
 } {
   const riddleResults: RiddleResult[] = [];
   let clueCosts = 0;
   let perfectGuessBonus = 0;
   let totalRewardMultiplier = 1;
+  let wrongGuessPenalty = 0;
 
   if (!order.isRiddle) {
-    return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier };
+    return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier, wrongGuessPenalty };
   }
 
   for (const item of order.riddleItems) {
@@ -28,18 +30,20 @@ function calculateRiddleResults(order: StationOrder): {
     let rewardBonus = 0;
     let guessPenalty = 0;
 
-    if (isCorrect) {
-      if (revealedClues === 0 && item.guessAttempts === 1) {
-        perfectGuessBonus += GAME_CONFIG.RIDDLE_PERFECT_GUESS_BONUS;
+    if (item.guessAttempts > 0) {
+      if (isCorrect) {
+        if (revealedClues === 0 && item.guessAttempts === 1) {
+          perfectGuessBonus += GAME_CONFIG.RIDDLE_PERFECT_GUESS_BONUS;
+        }
+
+        const noClueBonus = Math.max(0, 4 - revealedClues) * GAME_CONFIG.RIDDLE_NO_CLUE_BONUS * 0.1;
+        rewardBonus = noClueBonus;
+        totalRewardMultiplier += noClueBonus;
+      } else {
+        guessPenalty = wrongGuesses * GAME_CONFIG.RIDDLE_WRONG_GUESS_PENALTY;
+        wrongGuessPenalty += wrongGuesses * GAME_CONFIG.RIDDLE_WRONG_GUESS_PENALTY * 100;
+        totalRewardMultiplier = Math.max(0.3, totalRewardMultiplier - guessPenalty);
       }
-
-      const noClueBonus = Math.max(0, 4 - revealedClues) * GAME_CONFIG.RIDDLE_NO_CLUE_BONUS * 0.1;
-      rewardBonus = noClueBonus;
-
-      totalRewardMultiplier += noClueBonus;
-    } else {
-      guessPenalty = wrongGuesses * GAME_CONFIG.RIDDLE_WRONG_GUESS_PENALTY;
-      totalRewardMultiplier = Math.max(0.3, totalRewardMultiplier - guessPenalty);
     }
 
     riddleResults.push({
@@ -53,20 +57,20 @@ function calculateRiddleResults(order: StationOrder): {
     });
   }
 
-  return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier };
+  return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier, wrongGuessPenalty };
 }
 
 export function calculateDispatchResult(
   train: Train,
   order: StationOrder
 ): DispatchResult {
-  const effectiveItems = getEffectiveOrderItems(order);
+  const realItems = getRealOrderItems(order);
   const correctItems: OrderItem[] = [];
   const mismatches: OrderItem[] = [];
   let matchPoints = 0;
   let totalRequired = 0;
 
-  for (const item of effectiveItems) {
+  for (const item of realItems) {
     const loaded = getCandyLoad(train, item.candyType);
     totalRequired += item.quantity;
 
@@ -82,17 +86,34 @@ export function calculateDispatchResult(
     }
   }
 
+  if (order.isRiddle) {
+    for (const riddleItem of order.riddleItems) {
+      if (riddleItem.guessedType && riddleItem.guessedType !== riddleItem.candyType) {
+        const guessedLoad = getCandyLoad(train, riddleItem.guessedType);
+        if (guessedLoad > 0) {
+          const alreadyCounted = mismatches.find(m => m.candyType === riddleItem.guessedType);
+          if (!alreadyCounted) {
+            mismatches.push({ candyType: riddleItem.guessedType, quantity: guessedLoad });
+          }
+        }
+      }
+    }
+  }
+
   for (const carriage of train.carriages) {
-    const inOrder = effectiveItems.find(i => i.candyType === carriage.candyType);
+    const inOrder = realItems.find(i => i.candyType === carriage.candyType);
     if (!inOrder && carriage.currentLoad > 0) {
-      mismatches.push({ candyType: carriage.candyType, quantity: carriage.currentLoad });
+      const alreadyCounted = mismatches.find(m => m.candyType === carriage.candyType);
+      if (!alreadyCounted) {
+        mismatches.push({ candyType: carriage.candyType, quantity: carriage.currentLoad });
+      }
     }
   }
 
   const matchRate = totalRequired > 0 ? matchPoints / totalRequired : 0;
   const success = matchRate >= 0.8;
 
-  const { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier } = calculateRiddleResults(order);
+  const { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier, wrongGuessPenalty } = calculateRiddleResults(order);
 
   let reward = 0;
   if (success) {
@@ -108,6 +129,9 @@ export function calculateDispatchResult(
     penalty = Math.floor(order.reward * GAME_CONFIG.MISMATCH_PENALTY_RATE) * mismatches.length;
     penalty = Math.min(penalty, order.penalty);
   }
+
+  penalty += wrongGuessPenalty;
+  penalty = Math.min(penalty, order.reward);
 
   const reputationChange = success
     ? GAME_CONFIG.REPUTATION_PER_SUCCESS + (order.isRiddle ? 5 : 0)
