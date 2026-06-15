@@ -49,6 +49,10 @@ h1, h2, h3, h4, h5, h6 {
     animation: glow 2s ease-in-out infinite;
   }
 
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
   .text-shadow {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
@@ -117,6 +121,17 @@ h1, h2, h3, h4, h5, h6 {
   }
   50% {
     transform: translateY(-10px);
+  }
+}
+
+@keyframes slideDown {
+  0% {
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
   }
 }
 

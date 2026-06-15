@@ -1,4 +1,4 @@
-import { CandyType, Station, Train, BOARD_SIZE } from '@/types';
+import { CandyType, Station, Train, BOARD_SIZE, CandyAttributes, FlavorType, ColorType, OriginType, PreferenceType, ClueType } from '@/types';
 
 export const CANDY_CONFIG: Record<CandyType, { name: string; color: string; points: number; emoji: string }> = {
   strawberry: { name: '草莓糖', color: '#FF6B9D', points: 10, emoji: '🍓' },
@@ -8,6 +8,62 @@ export const CANDY_CONFIG: Record<CandyType, { name: string; color: string; poin
   grape: { name: '葡萄糖', color: '#9B59B6', points: 10, emoji: '🍇' },
   rainbow: { name: '彩虹糖', color: 'linear-gradient(135deg, #FF6B9D, #FFD93D, #6BCB77, #4D96FF, #9B59B6)', points: 50, emoji: '🌈' },
   bomb: { name: '炸弹糖', color: '#FF4757', points: 30, emoji: '💣' },
+};
+
+export const CANDY_ATTRIBUTES: Record<CandyType, CandyAttributes> = {
+  strawberry: { flavor: 'sweet', color: 'red', origin: 'candy-town', preference: 'festival' },
+  lemon: { flavor: 'sour', color: 'yellow', origin: 'lemon-estate', preference: 'daily' },
+  mint: { flavor: 'fresh', color: 'green', origin: 'mint-forest', preference: 'common' },
+  blueberry: { flavor: 'fruity', color: 'blue', origin: 'blueberry-port', preference: 'luxury' },
+  grape: { flavor: 'rich', color: 'purple', origin: 'grape-castle', preference: 'royal' },
+  rainbow: { flavor: 'sweet', color: 'purple', origin: 'candy-town', preference: 'festival' },
+  bomb: { flavor: 'rich', color: 'red', origin: 'grape-castle', preference: 'royal' },
+};
+
+export const FLAVOR_NAMES: Record<FlavorType, string> = {
+  sweet: '香甜',
+  sour: '酸爽',
+  fresh: '清新',
+  fruity: '果香',
+  rich: '浓郁',
+};
+
+export const COLOR_NAMES: Record<ColorType, string> = {
+  red: '红色',
+  yellow: '黄色',
+  green: '绿色',
+  blue: '蓝色',
+  purple: '紫色',
+};
+
+export const ORIGIN_NAMES: Record<OriginType, string> = {
+  'candy-town': '糖果小镇',
+  'lemon-estate': '柠檬庄园',
+  'mint-forest': '薄荷森林',
+  'blueberry-port': '蓝莓港口',
+  'grape-castle': '葡萄城堡',
+};
+
+export const PREFERENCE_NAMES: Record<PreferenceType, string> = {
+  royal: '皇家专供',
+  common: '平民喜爱',
+  luxury: '奢华享受',
+  daily: '日常必备',
+  festival: '节日庆典',
+};
+
+export const CLUE_NAMES: Record<ClueType, string> = {
+  flavor: '口味',
+  color: '颜色',
+  origin: '产地',
+  preference: '贵宾偏好',
+};
+
+export const CLUE_COSTS: Record<ClueType, number> = {
+  flavor: 10,
+  color: 15,
+  origin: 20,
+  preference: 25,
 };
 
 export const STATIONS: Station[] = [
@@ -73,4 +129,10 @@ export const GAME_CONFIG = {
   REPUTATION_PER_SUCCESS: 10,
   REPUTATION_PER_FAIL: -5,
   LOAD_PER_MATCH: 1,
+  RIDDLE_CHANCE: 0.3,
+  RIDDLE_BASE_MULTIPLIER: 1.5,
+  RIDDLE_NO_CLUE_BONUS: 0.5,
+  RIDDLE_WRONG_GUESS_PENALTY: 0.2,
+  RIDDLE_PERFECT_GUESS_BONUS: 30,
+  RIDDLE_MAX_GUESS_ATTEMPTS: 3,
 };

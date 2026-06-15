@@ -8,6 +8,7 @@ import {
   DispatchResult,
   PlayerProfile,
   AllStats,
+  CandyType,
 } from '@/types';
 import {
   createInitialBoard,
@@ -27,7 +28,7 @@ import {
 } from '@/engine/matchEngine';
 import { loadCandiesToTrain, clearTrain } from '@/engine/loadingSystem';
 import { calculateDispatchResult } from '@/engine/dispatchSystem';
-import { generateOrder } from '@/engine/contractSystem';
+import { generateOrder, revealClue, makeGuess } from '@/engine/contractSystem';
 import {
   loadProfile,
   saveProfile,
@@ -56,6 +57,7 @@ interface GameStore {
   profile: PlayerProfile;
   stats: AllStats;
   showStats: boolean;
+  notification: string | null;
 
   selectCandy: (pos: Position) => void;
   processSwap: (pos1: Position, pos2: Position) => void;
@@ -67,6 +69,9 @@ interface GameStore {
   closeResult: () => void;
   changeStation: (stationId: string) => void;
   persist: () => void;
+  revealClue: (riddleItemIndex: number, clueType: string) => void;
+  makeGuess: (riddleItemIndex: number, guessedType: CandyType) => void;
+  clearNotification: () => void;
 }
 
 const useGameStore = create<GameStore>((set, get) => {
@@ -90,6 +95,7 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
+    notification: null,
 
     persist: () => {
       const s = get();
@@ -381,6 +387,57 @@ const useGameStore = create<GameStore>((set, get) => {
       }));
 
       get().persist();
+    },
+
+    revealClue: (riddleItemIndex: number, clueType: string) => {
+      const { currentOrder, profile } = get();
+      if (!currentOrder) return;
+
+      const result = revealClue(currentOrder, riddleItemIndex, clueType as any, profile.coins);
+
+      if (result.success) {
+        const newProfile = {
+          ...profile,
+          coins: profile.coins - result.cost,
+        };
+        saveProfile(newProfile);
+
+        set({
+          currentOrder: result.updatedOrder,
+          profile: newProfile,
+          notification: result.message,
+        });
+
+        get().persist();
+      } else {
+        set({ notification: result.message });
+      }
+
+      setTimeout(() => {
+        set({ notification: null });
+      }, 3000);
+    },
+
+    makeGuess: (riddleItemIndex: number, guessedType: CandyType) => {
+      const { currentOrder } = get();
+      if (!currentOrder) return;
+
+      const result = makeGuess(currentOrder, riddleItemIndex, guessedType);
+
+      set({
+        currentOrder: result.updatedOrder,
+        notification: result.message,
+      });
+
+      get().persist();
+
+      setTimeout(() => {
+        set({ notification: null });
+      }, 3000);
+    },
+
+    clearNotification: () => {
+      set({ notification: null });
     },
   };
 });

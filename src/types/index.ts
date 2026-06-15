@@ -7,6 +7,35 @@ export type CandyType =
   | 'rainbow'
   | 'bomb';
 
+export type FlavorType = 'sweet' | 'sour' | 'fresh' | 'fruity' | 'rich';
+export type ColorType = 'red' | 'yellow' | 'green' | 'blue' | 'purple';
+export type OriginType = 'candy-town' | 'lemon-estate' | 'mint-forest' | 'blueberry-port' | 'grape-castle';
+export type PreferenceType = 'royal' | 'common' | 'luxury' | 'daily' | 'festival';
+
+export interface CandyAttributes {
+  flavor: FlavorType;
+  color: ColorType;
+  origin: OriginType;
+  preference: PreferenceType;
+}
+
+export type ClueType = 'flavor' | 'color' | 'origin' | 'preference';
+
+export interface Clue {
+  type: ClueType;
+  value: string;
+  revealed: boolean;
+  cost: number;
+}
+
+export interface RiddleOrderItem {
+  candyType: CandyType;
+  quantity: number;
+  clues: Clue[];
+  guessedType: CandyType | null;
+  guessAttempts: number;
+}
+
 export type SpecialCandyType = 'rainbow' | 'bomb' | null;
 
 export interface Candy {
@@ -60,6 +89,9 @@ export interface StationOrder {
   penalty: number;
   isUrgent: boolean;
   urgentBonus: number;
+  isRiddle: boolean;
+  riddleItems: RiddleOrderItem[];
+  baseRewardMultiplier: number;
 }
 
 export interface Station {
@@ -94,6 +126,16 @@ export interface GameState {
   dispatchResult: DispatchResult | null;
 }
 
+export interface RiddleResult {
+  candyType: CandyType;
+  guessedType: CandyType | null;
+  isCorrect: boolean;
+  cluesRevealed: number;
+  guessAttempts: number;
+  rewardBonus: number;
+  guessPenalty: number;
+}
+
 export interface DispatchResult {
   success: boolean;
   matchRate: number;
@@ -102,6 +144,10 @@ export interface DispatchResult {
   mismatches: OrderItem[];
   correctItems: OrderItem[];
   reputationChange: number;
+  isRiddle: boolean;
+  riddleResults: RiddleResult[];
+  clueCosts: number;
+  perfectGuessBonus: number;
 }
 
 export interface StatsStep {

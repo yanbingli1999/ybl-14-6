@@ -7,10 +7,10 @@ import DispatchResultModal from '@/components/DispatchResultModal/DispatchResult
 import GameOverModal from '@/components/GameOverModal/GameOverModal';
 import { getStationProgress } from '@/engine/contractSystem';
 import useGameStore from '@/store/useGameStore';
-import { Train, Candy } from 'lucide-react';
+import { Train, Candy, Info, X } from 'lucide-react';
 
 export default function Home() {
-  const { profile } = useGameStore();
+  const { profile, notification, clearNotification } = useGameStore();
   const { current, next, progress } = getStationProgress(profile.reputation);
 
   return (
@@ -86,6 +86,8 @@ export default function Home() {
             <li>• 匹配度高获得奖励，错装会被扣除罚金</li>
             <li>• 完成订单获得信誉，解锁更多车站</li>
             <li>• 4连消生成炸弹糖（范围消除），5连消生成彩虹糖（消除同色）</li>
+            <li className="text-purple-600">• 🎭 谜语委托：部分订单不显示糖果名称，可花金币揭开线索（口味/颜色/产地/贵宾偏好），或直接猜测装车</li>
+            <li className="text-purple-600">• 💎 谜语订单奖励更高，不揭线索直接猜对可获得完美猜测奖励！</li>
           </ul>
         </div>
 
@@ -93,6 +95,21 @@ export default function Home() {
           糖果列车 © 2024 | 数据存储在本地浏览器中
         </footer>
       </div>
+
+      {notification && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-slide-down">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-200 px-6 py-3 flex items-center gap-3">
+            <Info className="w-5 h-5 text-purple-500" />
+            <span className="text-gray-700 font-medium">{notification}</span>
+            <button
+              onClick={clearNotification}
+              className="ml-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <StatsPanel />
       <DispatchResultModal />

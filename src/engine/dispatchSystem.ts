@@ -1,17 +1,72 @@
-import { Train, StationOrder, DispatchResult, OrderItem, CandyType } from '@/types';
-import { GAME_CONFIG } from '@/data/config';
+import { Train, StationOrder, DispatchResult, OrderItem, CandyType, RiddleResult } from '@/types';
+import { GAME_CONFIG, CANDY_CONFIG } from '@/data/config';
 import { getCandyLoad } from './loadingSystem';
+import { getEffectiveOrderItems } from './contractSystem';
+
+function calculateRiddleResults(order: StationOrder): {
+  riddleResults: RiddleResult[];
+  clueCosts: number;
+  perfectGuessBonus: number;
+  totalRewardMultiplier: number;
+} {
+  const riddleResults: RiddleResult[] = [];
+  let clueCosts = 0;
+  let perfectGuessBonus = 0;
+  let totalRewardMultiplier = 1;
+
+  if (!order.isRiddle) {
+    return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier };
+  }
+
+  for (const item of order.riddleItems) {
+    const revealedClues = item.clues.filter(c => c.revealed).length;
+    clueCosts += item.clues.filter(c => c.revealed).reduce((sum, c) => sum + c.cost, 0);
+
+    const isCorrect = item.guessedType === item.candyType;
+    const wrongGuesses = item.guessedType ? item.guessAttempts - (isCorrect ? 1 : 0) : item.guessAttempts;
+
+    let rewardBonus = 0;
+    let guessPenalty = 0;
+
+    if (isCorrect) {
+      if (revealedClues === 0 && item.guessAttempts === 1) {
+        perfectGuessBonus += GAME_CONFIG.RIDDLE_PERFECT_GUESS_BONUS;
+      }
+
+      const noClueBonus = Math.max(0, 4 - revealedClues) * GAME_CONFIG.RIDDLE_NO_CLUE_BONUS * 0.1;
+      rewardBonus = noClueBonus;
+
+      totalRewardMultiplier += noClueBonus;
+    } else {
+      guessPenalty = wrongGuesses * GAME_CONFIG.RIDDLE_WRONG_GUESS_PENALTY;
+      totalRewardMultiplier = Math.max(0.3, totalRewardMultiplier - guessPenalty);
+    }
+
+    riddleResults.push({
+      candyType: item.candyType,
+      guessedType: item.guessedType,
+      isCorrect,
+      cluesRevealed: revealedClues,
+      guessAttempts: item.guessAttempts,
+      rewardBonus,
+      guessPenalty,
+    });
+  }
+
+  return { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier };
+}
 
 export function calculateDispatchResult(
   train: Train,
   order: StationOrder
 ): DispatchResult {
+  const effectiveItems = getEffectiveOrderItems(order);
   const correctItems: OrderItem[] = [];
   const mismatches: OrderItem[] = [];
   let matchPoints = 0;
   let totalRequired = 0;
 
-  for (const item of order.items) {
+  for (const item of effectiveItems) {
     const loaded = getCandyLoad(train, item.candyType);
     totalRequired += item.quantity;
 
@@ -28,7 +83,7 @@ export function calculateDispatchResult(
   }
 
   for (const carriage of train.carriages) {
-    const inOrder = order.items.find(i => i.candyType === carriage.candyType);
+    const inOrder = effectiveItems.find(i => i.candyType === carriage.candyType);
     if (!inOrder && carriage.currentLoad > 0) {
       mismatches.push({ candyType: carriage.candyType, quantity: carriage.currentLoad });
     }
@@ -37,12 +92,15 @@ export function calculateDispatchResult(
   const matchRate = totalRequired > 0 ? matchPoints / totalRequired : 0;
   const success = matchRate >= 0.8;
 
+  const { riddleResults, clueCosts, perfectGuessBonus, totalRewardMultiplier } = calculateRiddleResults(order);
+
   let reward = 0;
   if (success) {
-    reward = order.reward;
+    reward = Math.floor(order.reward * totalRewardMultiplier);
     if (order.isUrgent) {
       reward += Math.floor(order.reward * GAME_CONFIG.URGENT_BONUS_RATE);
     }
+    reward += perfectGuessBonus;
   }
 
   let penalty = 0;
@@ -52,7 +110,7 @@ export function calculateDispatchResult(
   }
 
   const reputationChange = success
-    ? GAME_CONFIG.REPUTATION_PER_SUCCESS
+    ? GAME_CONFIG.REPUTATION_PER_SUCCESS + (order.isRiddle ? 5 : 0)
     : GAME_CONFIG.REPUTATION_PER_FAIL;
 
   return {
@@ -63,6 +121,10 @@ export function calculateDispatchResult(
     mismatches,
     correctItems,
     reputationChange,
+    isRiddle: order.isRiddle,
+    riddleResults,
+    clueCosts,
+    perfectGuessBonus,
   };
 }
 

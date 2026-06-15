@@ -1,13 +1,13 @@
 import useGameStore from '@/store/useGameStore';
 import { CANDY_CONFIG } from '@/data/config';
-import { Coins, Star, CheckCircle, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { Coins, Star, CheckCircle, XCircle, TrendingUp, TrendingDown, HelpCircle, Sparkles, Eye } from 'lucide-react';
 
 export default function DispatchResultModal() {
   const { gamePhase, dispatchResult, nextOrder, closeResult, currentOrder } = useGameStore();
 
   if (gamePhase !== 'result' || !dispatchResult || !currentOrder) return null;
 
-  const { success, matchRate, reward, penalty, mismatches, correctItems, reputationChange } =
+  const { success, matchRate, reward, penalty, mismatches, correctItems, reputationChange, isRiddle, riddleResults, clueCosts, perfectGuessBonus } =
     dispatchResult;
 
   return (
@@ -26,6 +26,12 @@ export default function DispatchResultModal() {
           <p className="text-white/80 text-sm">
             {success ? '糖果已安全送达目的地' : '下次一定能做得更好！'}
           </p>
+          {isRiddle && (
+            <div className="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-white/20 rounded-full text-white text-xs">
+              <HelpCircle className="w-3 h-3" />
+              谜语委托
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-t-3xl p-6 -mt-2">
@@ -57,6 +63,60 @@ export default function DispatchResultModal() {
               </div>
             </div>
           </div>
+
+          {isRiddle && riddleResults.length > 0 && (
+            <div className="mb-4 p-4 bg-purple-50 rounded-xl">
+              <h4 className="text-sm font-semibold text-purple-700 mb-3 flex items-center gap-1">
+                <Sparkles className="w-4 h-4" />
+                谜语结算详情
+              </h4>
+              <div className="space-y-2">
+                {riddleResults.map((result, i) => {
+                  const realConfig = CANDY_CONFIG[result.candyType];
+                  const guessedConfig = result.guessedType ? CANDY_CONFIG[result.guessedType] : null;
+                  return (
+                    <div key={i} className="flex items-center justify-between text-sm bg-white/50 p-2 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{realConfig.emoji}</span>
+                        <span className="text-gray-700">{realConfig.name}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <Eye className="w-3 h-3" />
+                          {result.cluesRevealed}线索
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-gray-500">
+                          {result.guessAttempts}次猜测
+                        </div>
+                        {result.isCorrect ? (
+                          <span className="text-green-500 text-xs font-medium">正确</span>
+                        ) : (
+                          <span className="text-red-500 text-xs font-medium">
+                            {guessedConfig ? `猜了${guessedConfig.name}` : '未猜'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {clueCosts > 0 && (
+                <div className="mt-2 pt-2 border-t border-purple-200 flex justify-between text-xs">
+                  <span className="text-gray-500">线索花费</span>
+                  <span className="text-yellow-600">-{clueCosts} 金币</span>
+                </div>
+              )}
+              {perfectGuessBonus > 0 && (
+                <div className="mt-1 flex justify-between text-xs">
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    完美猜测奖励
+                  </span>
+                  <span className="text-green-600">+{perfectGuessBonus} 金币</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {penalty > 0 && (
             <div className="mb-4 p-3 bg-red-50 rounded-xl flex items-center gap-2">
